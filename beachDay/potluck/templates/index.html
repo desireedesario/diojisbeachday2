@@ -1,0 +1,500 @@
+
+{% load static %}
+
+<html>
+	<canvas id="canvas" style="position: fixed; top: 0; left: 0;"></canvas>
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<!-- The above 3 meta tags *must* come first in the head; any other head content must come after these tags -->
+		<!-- Bootstrap - Latest compiled and minified CSS -->
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+		<!-- CSS script -->
+		<link rel="stylesheet" type="text/css" href="{% static 'potluck/stylesheets/style.css' %}">
+		<!-- jquery script -->
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+		<script src="{% static 'potluck/javascripts/jquery.scrollex.min.js' %}"></script>   
+		<script src="{% static 'potluck/javascripts/app.js' %}"></script>  
+		<script src="{% static 'potluck/javascripts/jquery.scrolly.min.js' %}"></script>   
+		<script src="{% static 'potluck/javascripts/skel.min.js' %}"></script>   
+		<script src="{% static 'potluck/javascripts/util.js' %}"></script>   
+		<script src="{% static 'potluck/javascripts/layout.js' %}"></script>   
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+		<!-- <script src="/socket.io/socket.io.js"></script> -->
+	</head>
+	<body>
+
+		
+		<script>
+			(function () {
+				// globals
+				var canvas;
+				var ctx;
+				var W;
+				var H;
+				var mp = 150; //max particles
+				var particles = [];
+				var angle = 0;
+				var tiltAngle = 0;
+				var confettiActive = true;
+				var animationComplete = true;
+				var deactivationTimerHandler;
+				var reactivationTimerHandler;
+				var animationHandler;
+
+				// objects
+
+				var particleColors = {
+					colorOptions: ["DodgerBlue", "OliveDrab", "Gold", "pink", "SlateBlue", "lightblue", "Violet", "PaleGreen", "SteelBlue", "SandyBrown", "Chocolate", "Crimson"],
+					colorIndex: 0,
+					colorIncrementer: 0,
+					colorThreshold: 10,
+					getColor: function () {
+						if (this.colorIncrementer >= 10) {
+							this.colorIncrementer = 0;
+							this.colorIndex++;
+							if (this.colorIndex >= this.colorOptions.length) {
+								this.colorIndex = 0;
+							}
+						}
+						this.colorIncrementer++;
+						return this.colorOptions[this.colorIndex];
+					}
+				}
+
+				function confettiParticle(color) {
+					this.x = Math.random() * W; // x-coordinate
+					this.y = (Math.random() * H) - H; //y-coordinate
+					this.r = RandomFromTo(10, 30); //radius;
+					this.d = (Math.random() * mp) + 10; //density;
+					this.color = color;
+					this.tilt = Math.floor(Math.random() * 10) - 10;
+					this.tiltAngleIncremental = (Math.random() * 0.07) + .05;
+					this.tiltAngle = 0;
+
+					this.draw = function () {
+						ctx.beginPath();
+						ctx.lineWidth = this.r / 2;
+						ctx.strokeStyle = this.color;
+						ctx.moveTo(this.x + this.tilt + (this.r / 4), this.y);
+						ctx.lineTo(this.x + this.tilt, this.y + this.tilt + (this.r / 4));
+						return ctx.stroke();
+					}
+				}
+
+				$(document).ready(function () {
+					SetGlobals();
+					InitializeButton();
+					InitializeConfetti();
+
+					$(window).resize(function () {
+						W = window.innerWidth;
+						H = window.innerHeight;
+						canvas.width = W;
+						canvas.height = H;
+					});
+
+				});
+
+				function InitializeButton() {
+					$('#stopButton').click(DeactivateConfetti);
+					$('#startButton').click(RestartConfetti);
+				}
+
+				function SetGlobals() {
+					canvas = document.getElementById("canvas");
+					ctx = canvas.getContext("2d");
+					W = window.innerWidth;
+					H = window.innerHeight;
+					canvas.width = W;
+					canvas.height = H;
+				}
+
+				function InitializeConfetti() {
+					particles = [];
+					animationComplete = false;
+					for (var i = 0; i < mp; i++) {
+						var particleColor = particleColors.getColor();
+						particles.push(new confettiParticle(particleColor));
+					}
+					StartConfetti();
+				}
+
+				function Draw() {
+					ctx.clearRect(0, 0, W, H);
+					var results = [];
+					for (var i = 0; i < mp; i++) {
+						(function (j) {
+							results.push(particles[j].draw());
+						})(i);
+					}
+					Update();
+
+					return results;
+				}
+
+				function RandomFromTo(from, to) {
+					return Math.floor(Math.random() * (to - from + 1) + from);
+				}
+
+
+				function Update() {
+					var remainingFlakes = 0;
+					var particle;
+					angle += 0.01;
+					tiltAngle += 0.1;
+
+					for (var i = 0; i < mp; i++) {
+						particle = particles[i];
+						if (animationComplete) return;
+
+						if (!confettiActive && particle.y < -15) {
+							particle.y = H + 100;
+							continue;
+						}
+
+						stepParticle(particle, i);
+
+						if (particle.y <= H) {
+							remainingFlakes++;
+						}
+						CheckForReposition(particle, i);
+					}
+
+					if (remainingFlakes === 0) {
+						StopConfetti();
+					}
+				}
+
+				function CheckForReposition(particle, index) {
+					if ((particle.x > W + 20 || particle.x < -20 || particle.y > H) && confettiActive) {
+						if (index % 5 > 0 || index % 2 == 0) //66.67% of the flakes
+						{
+							repositionParticle(particle, Math.random() * W, -10, Math.floor(Math.random() * 10) - 20);
+						} else {
+							if (Math.sin(angle) > 0) {
+								//Enter from the left
+								repositionParticle(particle, -20, Math.random() * H, Math.floor(Math.random() * 10) - 20);
+							} else {
+								//Enter from the right
+								repositionParticle(particle, W + 20, Math.random() * H, Math.floor(Math.random() * 10) - 20);
+							}
+						}
+					}
+				}
+				function stepParticle(particle, particleIndex) {
+					particle.tiltAngle += particle.tiltAngleIncremental;
+					particle.y += (Math.cos(angle + particle.d) + 3 + particle.r / 2) / 2;
+					particle.x += Math.sin(angle);
+					particle.tilt = (Math.sin(particle.tiltAngle - (particleIndex / 3))) * 15;
+				}
+
+				function repositionParticle(particle, xCoordinate, yCoordinate, tilt) {
+					particle.x = xCoordinate;
+					particle.y = yCoordinate;
+					particle.tilt = tilt;
+				}
+
+				function StartConfetti() {
+					W = window.innerWidth;
+					H = window.innerHeight;
+					canvas.width = W;
+					canvas.height = H;
+					(function animloop() {
+						if (animationComplete) return null;
+						animationHandler = requestAnimFrame(animloop);
+						return Draw();
+					})();
+				}
+
+				function ClearTimers() {
+					clearTimeout(reactivationTimerHandler);
+					clearTimeout(animationHandler);
+				}
+
+				function DeactivateConfetti() {
+					confettiActive = false;
+					ClearTimers();
+				}
+
+				function StopConfetti() {
+					animationComplete = true;
+					if (ctx == undefined) return;
+					ctx.clearRect(0, 0, W, H);
+				}
+
+				function RestartConfetti() {
+					ClearTimers();
+					StopConfetti();
+					reactivationTimerHandler = setTimeout(function () {
+						confettiActive = true;
+						animationComplete = false;
+						InitializeConfetti();
+					}, 100);
+
+				}
+
+				window.requestAnimFrame = (function () {
+					return window.requestAnimationFrame || 
+					window.webkitRequestAnimationFrame || 
+					window.mozRequestAnimationFrame || 
+					window.oRequestAnimationFrame || 
+					window.msRequestAnimationFrame || 
+					function (callback) {
+						return window.setTimeout(callback, 1000 / 60);
+					};
+				})();
+			})();
+		</script>
+		<!-- Wrap it all up -->
+		<div id='wrapper'>
+			<!-- Header -->
+			<header id='header' class='alt'>
+				<span class='logo'><img src="{% static 'potluck/images/title_v2.png' %}" alt='' /></span>
+				<span>
+					<img style='width:100%; position: relative;' src="{% static 'potluck/images/caption.png' %}" alt='' />
+				</span>
+			</header>
+				
+			<!-- Nav -->
+			<nav id='nav'>
+				<ul>
+					<li><a href='#intro' class='active'>About</a></li>
+					<li><a href='#second'>Map</a></li>
+					<li><a href='#first'>Potluck and Items Sheet</a></li>
+					<li><a href='#cta'>Contact</a></li>
+				</ul>
+			</nav>
+				
+			<!-- Main -->
+			<div id='main'>	
+			<!-- About Beach Day -->
+			<section id='intro' class='main'>
+				<div class='spotlight'>
+					<div class='content'>
+						<header class='major'>
+							<h2>Birthday Beach Bash!</h2>
+						</header>
+						<p><b>ABOUT BEACH BASH</b>
+							<br> 
+							Ladies and gentlemen, boys and girls, puppies of all ages!!! I, your host Dioji, welcome you to the most glorious beach day! Hear the rocking music, run around with your fellow friendly dogs, eat and snack on the most incredible of treats and food to your heart's desire, and marvel at what will surely be the most spectacular birthday beach celebration!!!
+							<br>
+							We are celebrating the birthdays of the dogs of October, including Keiko, Eevee, and of course, yours truly! We’ll be on the sand Rosie's dog beach near the main building where the restrooms and food stands are. We’ll have two large canopies for humans and dogs, along with food, water, and beach blankets. 
+							<br><br>
+							<span>
+								<img style='width:50%; position: relative;' src="{% static 'potluck/images/potluckItems_v2.png' %}" alt='' />
+							</span>
+							<br>
+							<br>
+							<p><b>ABOUT RAFFLE</b>
+							<br>
+							<br>
+							We’ll be having a raffle at noon, and a potluck so we can eat!  Bring items for these if you have a chance, but if you can’t, make sure you bring yourself and your dog anyway!
+							<br>
+							<i>Raffle drawing at noon!</i>
+							<br>
+							<br>
+							<span>
+								<img style='width:50%; position: relative;' src="{% static 'potluck/images/raffleItems_v2.png' %}" alt='' />
+							</span>
+							<br>
+							<br>
+							We’re trying to make the raffle as fair as possible by first giving out tickets to those who bring raffle items.  People who bring potluck items will also get tickets.  You can give away your tickets if you like.  Extra tickets will be distributed randomly, or at least chaotically.  You can bring used or new items.  This is your chance to get that thing your dog doesn’t like anymore, or that doesn’t fit to someone else who will love it.
+						</p>
+						<br>
+						<span class='image'>
+							<img class="active" src="{% static 'potluck/images/eevee.png' %}" alt='' />
+						</span>
+					</div>
+					<span class='image'>
+						<img class="active" src="{% static 'potluck/images/maxAndDioji.png' %}" alt='' />
+					</span>
+				</div>
+			</section>
+
+			<!-- Chat -->
+			<section id='second' class='main special'>
+					<header class='major'>
+						<h2>
+							Map of the Event
+						</h2>
+					</header>
+					<p>
+						We’ll be on the sand Rosie's dog beach near the main building where the restrooms and food stands are. We’ll have two large canopies for humans and dogs, along with food, water, and beach blankets. 
+					</p>
+					<iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d4179.32589561514!2d-118.14216288578423!3d33.75596605460621!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x80dd304efd4c5e31%3A0x7d55e27ba00127fe!2sRosie&#39;s%20Dog%20Beach!5e1!3m2!1sen!2sus!4v1569253351672!5m2!1sen!2sus" width="600" height="450" frameborder="0" style=" display: block;
+				margin-left: auto;
+				margin-right: auto;
+				width: 100%; height:50%;" allowfullscreen=""></iframe>
+	
+					<div style="clear:both;"></div>
+				</section>
+
+
+			<!-- Begin Potluck Board -->
+			<section id='first' class='main special'>
+		
+				<div class='spotlight'>
+					<span class='image'><img src="{% static 'potluck/images/keiko.png' %}" alt='' /><div class="overlay">
+						  </div></span>
+					<div class='content'>
+						<header class='major'>
+							<h2>Sign Up to bring used leashes, collars, or dog accessories to raffle off, or sign up to bring a potluck item to the event!</h2>
+						</header>
+						<p>
+						The potluck is a bring something, eat something event!  So please bring some food along if you’re planning to eat so we don’t run out.
+						</p>
+						<br>
+						<!-- button for new potluckitem -->
+						<button type='button' class='btn link raffle-button' data-toggle='modal' data-target='#myModal'>sign up for a potluck or raffle item</button>
+					</div>
+					
+				</div>
+				ITEMS ALREADY COMING TO THE PARTY!!!<BR><BR>
+					{% for potluckItem in potluck_items %}
+							<span style="padding-left:5em;">
+								{{ potluckItem.potluckItem_text }}
+							</span>
+					{% endfor %}
+					<!-- Begin New Potluckitem Modal -->
+					<div class='modal fade' id='myModal' tabindex='-1' role='dialog' aria-labelledby='myModalLabel' aria-hidden='true'>
+						<div class='modal-dialog' role='document'>
+				
+							<!-- BEGIN NEW POTLUCKITEM FORM -->
+							<div class='modal-content'>
+								<div class='modal-header'>
+									<h4 class="modal-title" id="myModalLabel formField">Potluck/Raffle Details:</h4>
+									<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+									<span aria-hidden="true">&times;</span>
+									</button>
+								</div>
+				
+								<div class="modal-body">
+									<form class='new-post' id='new-post' method="post">
+										{% csrf_token %}
+										{{ potluck_form }}
+										<input type='hidden' id='post-user' name='user' value=''>
+										<input class='btn btn-secondary' data-dismiss='modal' value="CLOSE">
+										<input name='potluckitem' type="submit" class='btn btn-primary' value="SEND POTLUCK ITEM">
+
+									</form>
+								</div>
+							</div>
+							<!-- END OF NEW POST FORM -->
+						</div>
+					</div>
+					<hr>
+					<!-- End Potluckitem Modal -->
+					
+					<!-- Two Columns -->
+					<div class='row'>
+						<article class='postList posts-column'>
+						<b>
+							<h2 class='custom-font'>Potluck List</h2>
+						</b>
+
+
+						{% if potluck_items %}
+						<ul class='posts-list list-group pre-scrollable'>
+							{% for potluckItem in potluck_items %}
+							<li class="groupList list-group-item clearfix">
+								<div class="ext-left">
+
+									<p>
+										<span class="post-title">Posted By:</span>
+										{{ potluckItem.user_name }}
+									</p>
+									{% if potluckItem.dog_name %}
+									<p>
+										<span class="post-title">Dog:</span>
+										{{ potluckItem.dog_name }}
+									</p>
+									{% endif %}
+									<p>
+										<span class="post-title">Potluck/Raffle Item:</span>
+											{{ potluckItem.potluckItem_text }}
+										<br>
+										<p><small>{{ potluckItem.pub_date }}</small></p>
+									</p>
+							
+								</div>
+								<div class="ext-right">
+									{% if potluckItem.additional_message %}
+									<p>
+										<span class="post-title">Note:</span>
+										<i>{{ potluckItem.additional_message }}</i>
+									</p>
+									{% endif %}
+									<br>
+									<button type="button" class="link btn" style="float:right;" data-toggle="modal" data-target="#confirm-delete"> 
+										Delete
+									</button>
+
+									<div class="modal fade" id="confirm-delete" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+											<div class="modal-dialog">
+												<div class="modal-content">
+												
+													<div class="modal-header">
+														<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+														<h4 class="modal-title" id="myModalLabel">Confirm Delete</h4>
+													</div>
+												
+													<div class="modal-body" style="text-align:initial;">
+														<p>You are about to delete an item under the name <b>{{ potluckItem.user_name }}</b>. This will be deleted forever and is irreversible.</p>
+														<p>Do you want to proceed?</p>
+														<h3><b>ITEM TO GET RID OF: {{ potluckItem.potluckItem_text }}</b></h3>
+														<p class="debug-url"></p>
+													</div>
+													
+													<div class="modal-footer">
+														<form method="post">
+															{% csrf_token %}
+															<button type="submit" name="deletePotluckitem" value="{{ potluckItem.id }}" class="btn btn-danger btn-ok">Delete</button>
+														</form>
+													</div>
+												</div>
+											</div>
+										</div>
+
+								</div>
+							</li>
+							<hr>
+							{% endfor %}
+						</ul>
+						{% else %}
+						<p>Oh No! No Potluck Items or Raffle Items Have Been Added To The List!</p>
+						{% endif %}
+						</article>  
+					</div>
+			</section>
+			<!-- End Potluck Board -->
+				
+			<!-- Contact Us -->
+			<section id='cta' class='main special'>
+				<header class='major'>						
+					<h2>Contact For More Details</h2>
+				</header>
+						<p>
+							<a href='https://www.instagram.com/heyudioji/'>
+								@heyudioji<br>
+							</a>
+							Dioji and Desi 
+							<br>
+							heyudioji@gmail.com
+						</p>
+			</section>
+				
+			</div>
+				
+			<!-- Footer -->
+			<footer id='footer'>
+				<p class='copyright'>&copy; heyudioji</p>
+			</footer>	
+		</div>
+	</body>
+</html>
+		
+
+					
