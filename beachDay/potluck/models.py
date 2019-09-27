@@ -21,7 +21,7 @@ class PotluckItem(models.Model):
 
 	def was_published_recently(self):
 		now = timezone.now()
-		return now - datetime.timedelta(days=1) <= self.pub_date <= now
+		return now - datetime.timedelta(minutes=30) <= self.pub_date <= now
 	was_published_recently.admin_order_field = 'pub_date'
 	was_published_recently.boolean = True
 	was_published_recently.short_description = 'Published recently?'
@@ -40,12 +40,13 @@ class PotluckItemForm(forms.ModelForm):
 		fields = ['user_name', 'dog_name', 'raffle_participation', 'potluckItem_text', 'additional_message']
 		widgets = {
 			'additional_message' : Textarea,
+			'potluckItem_text' : Textarea,
 		}
 		labels = {
 			'user_name' : 'Name of Person/People Attending',
 			'dog_name' : "Name(s) of the Dog(s) Coming (not required)",
 			'additional_message': "Additional Message (not required), i.e further detail about what you are bringing",
-			'potluckItem_text' : 'Potluck Item(s) you are Bringing',
+			'potluckItem_text' : 'Potluck Item(s) you are Bringing (or enter your raffle items :D, but not required)',
 			'raffle_participation': "Will you be bringing anything for the raffle?"
 		}
 
