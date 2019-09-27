@@ -353,11 +353,15 @@
 					
 				</div>
 				ITEMS ALREADY COMING TO THE PARTY!!!<BR><BR>
-					{% for potluckItem in potluck_items %}
-							<span style="padding-left:5em;">
+					<ul style="-webkit-column-count: 3;
+					-moz-column-count: 3;
+					column-count: 3; font-size:1.3vh; list-style-type: none;">
+						{% for potluckItem in potluck_items %}
+							<li>
 								{{ potluckItem.potluckItem_text }}
-							</span>
+							</li>
 					{% endfor %}
+					</ul>
 					<!-- Begin New Potluckitem Modal -->
 					<div class='modal fade' id='myModal' tabindex='-1' role='dialog' aria-labelledby='myModalLabel' aria-hidden='true'>
 						<div class='modal-dialog' role='document'>
