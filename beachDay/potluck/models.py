@@ -38,7 +38,7 @@ class User(models.Model):
 class PotluckItemForm(forms.ModelForm):
 	class Meta:
 		model = PotluckItem
-		fields = ['user_name', 'instagram_account' 'dog_name', 'raffle_participation', 'potluckItem_text', 'additional_message']
+		fields = ['user_name', 'instagram_account', 'dog_name', 'raffle_participation', 'potluckItem_text', 'additional_message']
 		widgets = {
 			'additional_message' : Textarea,
 			'potluckItem_text' : Textarea,
@@ -46,7 +46,7 @@ class PotluckItemForm(forms.ModelForm):
 		labels = {
 			'user_name' : 'Name of Person/People Attending',
 			'dog_name' : "Name(s) of the Dog(s) Coming (not required)",
-			'instagram_account': "Instagram Account? (not required)",
+			'instagram_account': "Instagram Account Handle (not required)",
 			'additional_message': "Additional Message (not required), i.e further detail about what you are bringing",
 			'potluckItem_text' : 'Potluck Item(s) you are Bringing (or enter your raffle items :D, but not required)',
 			'raffle_participation': "Will you be bringing anything for the raffle?"

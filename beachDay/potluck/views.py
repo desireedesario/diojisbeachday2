@@ -51,6 +51,12 @@ class IndexView(generic.TemplateView):
 			ctxt['potluck_form'] = potluck_form
 		return render(request, self.template_name, self.get_context_data(**ctxt))
 
+	def edit(request, *args, **kwargs):
+		if 'pk' in request.POST:
+			existing_entry = potluck_models.PotluckItem.objects.get(pk=pk)
+			form = potluck_models.PotluckItemForm(instance=existing_entry)
+		return render(request, self.template_name, self.get_context_data(**ctxt))
+
 	def delete(self, request, potluck_id, *args, **kwargs):
 		if 'deletePotluckitem' in request.POST:
 			potluck_item = get_object_or_404(potluck_models.PotluckItem, pk=potluck_id)
